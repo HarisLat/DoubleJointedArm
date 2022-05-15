@@ -12,7 +12,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Input parameters
 LR_ACTOR = 1e-4  # learning rate of the actor
-LR_CRITIC = 1e-3  # learning rate of the critic
+LR_CRITIC = 1e-4  # learning rate of the critic
 WEIGHT_DECAY = 0  # L2 weight decay
 BUFFER_SIZE = int(1e5)  # replay buffer size
 BATCH_SIZE = 128  # minibatch size
@@ -23,7 +23,7 @@ TAU = 1e-3  # for soft update of target parameters
 class Agent:
     """Interacts with and learns from the environment."""
 
-    def __init__(self, state_size, action_size, random_seed):
+    def __init__(self, state_size, n_agents, action_size, random_seed):
         """Initialize an Agent object.
         Params
         ======
@@ -33,6 +33,7 @@ class Agent:
         """
 
         self.state_size = state_size
+        self.n_agents = n_agents
         self.action_size = action_size
         self.seed = random.seed(random_seed)
 
@@ -49,7 +50,7 @@ class Agent:
         )
 
         # Noise process
-        self.noise = OUNoise(action_size, random_seed)
+        self.noise = OUNoise((n_agents, action_size), random_seed)
 
         # Replay memory
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
@@ -71,7 +72,10 @@ class Agent:
     def step(self, state, action, reward, next_state, done):
         """Save experience in replay memory, and use random sample from buffer to learn."""
         # Save experience / reward
-        self.memory.add(state, action, reward, next_state, done)
+        for i in range(self.n_agents):
+            self.memory.add(
+                state[i, :], action[i, :], reward[i], next_state[i, :], done[i]
+            )
 
         # Learn, if enough samples are available in memory
         if len(self.memory) > BATCH_SIZE:
